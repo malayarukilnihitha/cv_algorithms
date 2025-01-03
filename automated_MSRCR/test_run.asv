@@ -1,0 +1,71 @@
+% Define data path
+data_path = '/Users/nihithamalayarukil/Downloads/INTERNSHIPS-2024/NIHITHA/IMPLEMENTATION/ALGORITHMS/ALL_IMAGES/all';
+
+% Get list of images in the directory
+img_list = dir(data_path);
+if isempty(img_list)
+    disp('Data directory is empty.');
+    return;
+end
+
+% Read the configuration from JSON
+config_file = 'config.json';
+fid = fopen(config_file);
+raw = fread(fid, inf);
+str = char(raw');
+fclose(fid);
+config = jsondecode(str);
+
+% Import retinex functions from Python
+retinex = py.importlib.import_module('retinex');
+
+% Loop through each image
+for i = 1:length(img_list)
+    img_name = img_list(i).name;
+    if strcmp(img_name, '.gitkeep')
+        continue;
+    end
+
+    % Read the image using MATLAB's imread function
+    img = imread(fullfile(data_path, img_name));
+
+    % Convert the image to uint8 if it's not already
+    if ~isa(img, 'uint8')
+        img = uint8(img);
+    end
+    
+    % Convert the image to Python format
+    img_py = py.numpy.array(img);
+
+    % Apply MSRCR
+    img_msrcr_py = retinex.MSRCR(img_py, py.list(config.sigma_list), config.G, config.b, config.alpha, config.beta, config.low_clip, config.high_clip);
+    img_msrcr = uint8(img_msrcr_py);
+
+    % Apply automated MSRCR
+    img_amsrcr_py = retinex.automatedMSRCR(img_py, py.list(config.sigma_list));
+    img_amsrcr = uint8(img_amsrcr_py);
+
+    % Apply MSRCP
+    img_msrcp_py = retinex.MSRCP(img_py, py.list(config.sigma_list), config.low_clip, config.high_clip);
+    img_msrcp = uint8(img_msrcp_py);
+
+    % Display the original image
+    figure, imshow(img);
+    title('Original');
+
+    % Display the MSRCR image
+    figure, imshow(img_msrcr);
+    title('Retinex MSRCR');
+
+    % Display the automated MSRCR image
+    figure, imshow(img_amsrcr);
+    title('Automated Retinex');
+
+    % Display the MSRCP image
+    figure, imshow(img_msrcp);
+    title('MSRCP');
+
+    % Save the images
+    imwrite(img, 'original.jpg');
+    imwrite(img_msrcr, 'retinex.jpg');
+end

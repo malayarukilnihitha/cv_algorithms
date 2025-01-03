@@ -1,0 +1,75 @@
+% Set the Python environment
+pyenv('Version', 'path_to_your_python_executable');
+
+% Define the data path
+data_path = '/Users/nihithamalayarukil/Documents/MATLAB/Examples/R2024a/matlab/Retinex/data';
+
+% Get the list of images
+img_list = dir(fullfile(data_path, '*.jpg'));  % Adjust the extension as needed
+if isempty(img_list)
+    disp('Data directory is empty.');
+    return;
+end
+
+% Read the configuration file
+config_file = 'config.json';
+config = jsondecode(fileread(config_file));
+
+% Process each image
+for i = 1:length(img_list)
+    img_name = img_list(i).name;
+    
+    if strcmp(img_name, '.gitkeep')
+        continue;
+    end
+    
+    % Construct full image path
+    img_path = fullfile(data_path, img_name);
+    
+    try
+        % Read the image using Python
+        img = py.cv2.imread(img_path);
+        if isempty(img)
+            disp(['Failed to read ', img_name]);
+            continue;
+        end
+        
+        % Apply Retinex algorithms
+        img_msrcr = py.retinex.MSRCR(img, config.sigma_list, config.G, config.b, ...
+            config.alpha, config.beta, config.low_clip, config.high_clip);
+        
+        img_amsrcr = py.retinex.automatedMSRCR(img, config.sigma_list);
+        
+        img_msrcp = py.retinex.MSRCP(img, config.sigma_list, config.low_clip, config.high_clip);
+        
+        % Convert images back to MATLAB format
+        img_msrcr = uint8(img_msrcr);  % Example conversion, adjust as needed
+        img_amsrcr = uint8(img_amsrcr);
+        img_msrcp = uint8(img_msrcp);
+        
+        % Display the images
+        figure, imshow(img), title('Original');
+        figure, imshow(img_msrcr), title('MSRCR');
+        figure, imshow(img_amsrcr), title('Automated MSRCR');
+        figure, imshow(img_msrcp), title('MSRCP');
+        
+        % Save the images
+        imwrite(img, 'original.jpg');
+        imwrite(img_msrcr, 'msrcr.jpg');
+        imwrite(img_amsrcr, 'automated_msrcr.jpg');
+        imwrite(img_msrcp, 'msrcp.jpg');
+        
+    catch ME
+        disp(['Caught unexpected exception: ', ME.message]);
+    end
+end
+
+# Save the images
+#cv2.imwrite('SSR.jpg', img_ssr)
+#cv2.imwrite('MSR.jpg', img_msr)
+
+    #cv2.imshow('Image', img)
+    #cv2.imshow('retinex', img_msrcr)
+    #cv2.imshow('Automated retinex', img_amsrcr)
+    #cv2.imshow('MSRCP', img_msrcp)
+    #cv2.waitKey()
